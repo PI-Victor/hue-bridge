@@ -6,7 +6,16 @@ license = "Apache-2.0"
 description = "Asynchronous Hue Bridge API v1 and v2 bindings"
 repository = "https://github.com/pi-victor/hue-bridge"
 readme = "README.md"
-keywords = ["hue-bridge", "philips"]
+keywords = [
+  "hue-bridge",
+  "hue-lights",
+  "hue-lights-control",
+  "hue-lighstrip",
+  "hue-api",
+  "hue-bulbs",
+  "hue-entertainment",
+  "philips-hue",
+]
 categories =["web-programming::http-client", "api-bindings"]
 edition = "2021"
 
