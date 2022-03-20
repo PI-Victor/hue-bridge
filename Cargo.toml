@@ -1,0 +1,22 @@
+[package]
+name = "hue-bridge"
+version = "0.1.0-alpha.1"
+authors = ["Victor Palade <victor@cloudflavor.io>"]
+license = "Apache-2.0"
+description = "Asynchronous Hue Bridge API v1 and v2 bindings"
+repository = "https://github.com/pi-victor/hue-bridge"
+readme = "README.md"
+keywords = ["hue-bridge", "philips"]
+categories =["web-programming::http-client", "api-bindings"]
+edition = "2021"
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = "0.11.10"
+
+[dev-dependencies]
+tokio = { version = "1.17", features = ["macros", "rt-multi-thread"] }
