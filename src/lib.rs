@@ -14,6 +14,22 @@
 
 #![warn(missing_docs)]
 
-pub mod huebridge;
+//! This crate provides asynchronous API bindings for
+//! [Hue Bridge CLIP API](https://developers.meethue.com/develop/hue-api-v2/).  
+//! NOTE: You need to be registered and signed in to see the documentation.  
+//!
+//! In order to develop with this crate **you need physical access to a Hue Bridge**. The security
+//! of the Hue Bridge revolves around pressing the button on the device to register an "application"
+//! and get a unique application identifier back.  
 
+/// Contains all CLIP API resource types
+pub mod api;
+pub use api::resources::Bridge;
+pub use api::resources::Device;
+pub use api::resources::Light;
+
+/// Contains the hue bridge client
+pub mod huebridge;
 pub use huebridge::HueBridge;
+
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
