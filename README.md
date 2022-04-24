@@ -13,4 +13,4 @@ This crate provides async bindings for Hue Bridge API.
 
 At the time of writing this, the Hue Bridge API is being migrated to API v2,
 but not all endpoints have been implemented. So this crate utilizes the
-implemented resources from v2 and plugs the uses v1 to fill in the rest.
+implemented resources from v2 and plugs the rest with v1.
