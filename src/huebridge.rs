@@ -14,10 +14,8 @@
 
 use crate::Bridge;
 use crate::Result;
-use reqwest::header::HeaderMap;
 use reqwest::{Client, Method, Request};
 use serde::de::DeserializeOwned;
-use serde::de::DeserializeSeed;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tokio::fs;

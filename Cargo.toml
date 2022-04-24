@@ -9,11 +9,8 @@ readme = "README.md"
 keywords = [
   "hue-bridge",
   "hue-lights",
-  "hue-lights-control",
   "hue-lighstrip",
   "hue-api",
-  "hue-bulbs",
-  "hue-entertainment",
   "philips-hue",
 ]
 categories =["web-programming::http-client", "api-bindings"]
