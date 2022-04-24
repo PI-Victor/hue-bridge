@@ -14,7 +14,10 @@
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[allow(missing_docs)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+/// <https://developers.meethue.com/develop/hue-api-v2/api-reference/#resource>
+#[serde(rename_all = "lowercase")]
 pub enum ResourceTypes {
     Device,
     BridgeHome,
@@ -42,4 +45,11 @@ pub enum ResourceTypes {
     Geofence,
     GeofenceClient,
     Geolocation,
+}
+
+impl Default for ResourceTypes {
+    // TODO: change this if needed to something that makes sense.
+    fn default() -> Self {
+        ResourceTypes::Device
+    }
 }

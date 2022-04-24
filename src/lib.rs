@@ -21,9 +21,28 @@
 //! In order to develop with this crate **you need physical access to a Hue Bridge**. The security
 //! of the Hue Bridge revolves around pressing the button on the device to register an "application"
 //! and get a unique application identifier back.  
+//!
+//! The client can be instantiated and used in two ways.
+//! By registering a new application with the hue bridge:
+//! ```
+//! let client = HueBridge::new("https://hue-bridge.local")
+//!     .with_ca_pem("/path/to/hue-bridge-ca.pem")
+//!     .await?
+//!     .register("hue-bindings")
+//!     .await?;
+//! ```
+//!
+//! Or by using an already registered application.
+//! ```
+//! let client = HueBridge::new("https:://my-hue-bridge")
+//!      .with_ca_pem("/path/to/hue-bridge-ca.pem")
+//!      .with_username("my-randomly-generated-username")
+//!      .await?;
+//! ```
 
 /// Contains all CLIP API resource types
 pub mod api;
+
 pub use api::resources::Bridge;
 pub use api::resources::Device;
 pub use api::resources::Light;
@@ -32,4 +51,4 @@ pub use api::resources::Light;
 pub mod huebridge;
 pub use huebridge::HueBridge;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;

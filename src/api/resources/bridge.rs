@@ -34,22 +34,23 @@ impl fmt::Display for MinimumSwVersionError {
     }
 }
 
+#[allow(missing_docs)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Bridge {
     pub name: String,
-    pub data_store_revision: String,
-    pub sw_version: String,
-    pub api_version: String,
+    pub datastoreversion: String,
+    pub swversion: String,
+    pub apiversion: String,
     pub mac: String,
     pub bridgeid: String,
-    pub factory_new: bool,
-    pub model_id: String,
+    pub factorynew: bool,
+    pub modelid: String,
 }
 
 impl Bridge {
     pub(crate) fn check_version(&self) -> Result<()> {
-        let bridge_version = self.sw_version.parse::<u64>().unwrap();
-        if bridge_version < MINIMUM_BRIDGE_VERSION {
+        let bridge_version = &self.swversion.parse::<u64>().unwrap();
+        if bridge_version < &MINIMUM_BRIDGE_VERSION {
             Err(MinimumSwVersionError)?;
         }
 
