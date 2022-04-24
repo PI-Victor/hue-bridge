@@ -143,7 +143,7 @@ impl HueBridge {
         self.app_name.clone()
     }
 
-    pub(crate) async fn fetch_resource<'de, T>(&self, method: Method, endpoint: &str) -> Result<T>
+    pub(crate) async fn fetch_resource<T>(&self, method: Method, endpoint: &str) -> Result<T>
     where
         T: DeserializeOwned,
     {

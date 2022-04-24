@@ -16,5 +16,5 @@ use serde::{Deserialize, Serialize};
 
 #[allow(missing_docs)]
 /// <https://developers.meethue.com/develop/hue-api-v2/api-reference/#resource_device>
-#[derive(Debug, Serialize, Deserialize, Builder, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Device {}
