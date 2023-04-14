@@ -8,10 +8,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let user_name = env::var("HUE_BRIDGE_REGISTERED_USERNAME")?;
     let pem_path = env::var("HUE_BRIDGE_PEM_PATH")?;
 
-    let client = HueBridge::new(&url)
-        .with_ca_pem(&pem_path)
-        .await?
-        .with_username(&user_name)
+    let client = HueBridge::builder()
+        .api(&url)
+        .ca_pem(&pem_path)
+        .token(&user_name)
+        .app_name("hue-bindings")
+        .build()
         .await?;
 
     println!(
@@ -23,6 +25,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let light = Light::new(client);
     let lights = light.list().await?;
     lights.iter().for_each(|light| println!("{:?}", &light));
+
+    let light = light.get("235eb2fc-98de-4462-850b-f255d9a39995").await?;
+    println!("{:?}", &light);
 
     Ok(())
 }

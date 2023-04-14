@@ -13,4 +13,22 @@ This crate provides async bindings for Hue Bridge API.
 
 At the time of writing this, the Hue Bridge API is being migrated to API v2,
 but not all endpoints have been implemented. So this crate utilizes the
-implemented resources from v2 and plugs the rest with v1.
+implemented resources from v2 and plugs the rest with v1.'
+
+Resources that the bindings support:
+
+- [x] List lights 
+- [ ] Set light
+
+- [ ] List scenes
+- [ ] Set scene 
+
+- [ ] List rooms
+- [ ] Set room
+
+- [ ] List zone
+- [ ] Set zone
+
+- [ ] List devices
+- [ ] Set device
+

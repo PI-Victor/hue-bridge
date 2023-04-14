@@ -1,104 +1,129 @@
 // Copyright 2022  Palade Ionut Victor
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy
+// of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations
+// under the License.
 
-use crate::Bridge;
-use crate::Result;
-use reqwest::{Client, Method, Request};
+use crate::{Bridge, Result};
+use reqwest::tls::Certificate;
+use reqwest::{Client, Method, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 
 /// HueBridge client
 #[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub struct HueBridge {
-    pub(crate) client: reqwest::Client,
-    pub(crate) api_url: String,
-    app_name: String,
-    pub(crate) token: String,
+    client: Option<Client>,
+    pub(crate) api_url: Option<String>,
+    app_name: Option<String>,
+    pub(crate) token: Option<String>,
+    pub(crate) ca_path: Option<PathBuf>,
+    pub(crate) disable_tls: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct HueResult {
+    success: Option<Success>,
+    error: Option<HueError>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct Success {
+    username: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct HueError {
+    description: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Application {
+    devicetype: String,
+    generateclientkey: bool,
 }
 
 impl HueBridge {
-    /// Builds a new base client that can be used to register a new application
-    /// or use an already existing one.
+    /// Builds a new base client that can be used to register a new
+    /// application or use an already existing one.
     /// ```
-    /// let client = HueBridge::new("https://my-local-bridge.local")
-    /// .with_ca_pem("./path/to/hue/bridge/root-ca")
-    /// .await?
+    /// let client = HueBridge::builder()
+    ///     .api("https://my-local-bridge.local")
+    ///     .ca_pem("./path/to/hue/bridge/root-ca")
+    ///     .token("my-token")
+    ///     .app_name("my-app")
+    ///     .build()
+    ///     .await?;
     /// ```
-    pub fn new(api_url: &str) -> Self {
-        let client = reqwest::Client::new();
-
+    pub fn builder() -> Self {
         Self {
-            client,
-            api_url: api_url.to_string(),
-            token: "".to_string(),
-            app_name: "".to_string(),
+            ..Default::default()
         }
     }
 
     /// Set Root CA in PEM format for client validation
-    pub async fn with_ca_pem<P: AsRef<Path>>(mut self, ca_path: P) -> Result<Self> {
-        let cert = fs::read(ca_path).await?;
-        let cert = reqwest::tls::Certificate::from_pem(&cert)?;
-        self.client = Client::builder()
-            .https_only(true)
-            .danger_accept_invalid_hostnames(true)
-            .add_root_certificate(cert)
-            .build()?;
-
-        Ok(self)
+    pub fn ca_pem(mut self, ca_path: impl AsRef<Path>) -> Self {
+        self.ca_path = Some(ca_path.as_ref().to_path_buf());
+        self
     }
 
-    async fn check_version(&self) -> Result<()> {
-        let url = format!("{}/api/0/config", &self.api_url);
-        let resp = self.client.get(url).send().await?;
-        let text = resp.text().await?;
-        let bridge: Bridge = serde_json::from_str(&text)?;
-        bridge.check_version()?;
-
-        Ok(())
+    /// Instantiates a hue bridge client with a registered username
+    pub fn token(mut self, token: &str) -> Self {
+        self.token = Some(token.to_string());
+        self
+    }
+    /// Set the API URL for the hue bridge client
+    pub fn api(mut self, api_url: &str) -> Self {
+        self.api_url = Some(api_url.to_string());
+        self
     }
 
-    /// Registers a new application
-    pub async fn register(mut self, app_name: &str) -> Result<HueBridge> {
-        let _ = &self.check_version().await?;
+    /// Disable TLS validation for the hue bridge client
+    pub fn disable_tls(mut self) -> Self {
+        self.disable_tls = true;
+        self
+    }
+    /// Registers or finds a new application on the hue bridge
+    pub fn app_name(mut self, app_name: &str) -> Self {
+        self.app_name = Some(app_name.to_string());
+        self
+    }
 
-        #[derive(Debug, Clone, Deserialize)]
-        struct HueResult {
-            success: Option<Success>,
-            error: Option<Error>,
+    /// Register or finds a new application with the hue bridge
+    pub async fn build(mut self) -> Result<HueBridge> {
+        let cert_file = fs::read(self.ca_path.as_ref().unwrap()).await?;
+        let cert = Certificate::from_pem(&cert_file)?;
+        self.client = Some(
+            Client::builder()
+                .https_only(true)
+                .danger_accept_invalid_hostnames(true)
+                .add_root_certificate(cert)
+                .build()?,
+        );
+
+        if let Err(e) = &self.check_version().await {
+            return Err(format!("failed to check version: {e}").into());
+        };
+        if self.token.is_none() {
+            self.register().await
+        } else {
+            Ok(HueBridge { ..self })
         }
+    }
 
-        #[derive(Debug, Clone, Deserialize)]
-        struct Success {
-            username: String,
-        }
-
-        #[derive(Debug, Clone, Deserialize)]
-        struct Error {
-            description: String,
-        }
-
-        let url = format!("{}/api", &self.api_url);
-
-        #[derive(Serialize, Deserialize)]
-        struct Application {
-            devicetype: String,
-            generateclientkey: bool,
-        }
+    async fn register(mut self) -> Result<Self> {
+        let app_name = &self.app_name.as_deref().to_owned().unwrap();
 
         let app = Application {
             devicetype: app_name.to_string(),
@@ -106,53 +131,58 @@ impl HueBridge {
         };
 
         let req_body = serde_json::to_string(&app)?;
-        let resp = self.client.post(url).body(req_body).send().await?;
+        let resp = self
+            .do_request::<Vec<HueResult>>(Method::POST, "api", Some(req_body))
+            .await?;
 
-        let resp_body = resp.text().await?;
-        let success: Vec<HueResult> = serde_json::from_str(&resp_body)?;
-        if let Some(e) = &success[0].error {
-            Err(format!("{}", &e.description).into())
+        if let Some(err) = &resp[0].error {
+            Err(err.description.clone().into())
         } else {
-            let res = success.get(0).unwrap().clone();
-            self.token = res.success.unwrap().username;
-            self.app_name = app_name.to_string();
-
-            Ok(self)
+            let res = resp.get(0).unwrap().clone();
+            self.token = Some(res.success.unwrap().username);
+            self.app_name = Some(app_name.to_string());
+            Ok(HueBridge { ..self.clone() })
         }
     }
 
-    /// Instantiates a hue bridge client with a registered username
-    pub async fn with_username(mut self, username: &str) -> Result<Self> {
-        let _ = &self.check_version().await?;
-
-        self.token = username.to_string();
-        Ok(self)
+    async fn check_version(&self) -> Result<()> {
+        let resp: Bridge = self.do_request(Method::GET, "api/config", None).await?;
+        resp.check_version()?;
+        Ok(())
     }
 
-    /// Retrieve the username after an application has been registered. Can be used in conjuction with
-    /// HueBridge::with_username()
-    pub fn get_username(&self) -> String {
-        self.token.clone()
+    /// Retrieve the username after an application has been registered. Can be
+    /// used in conjuction with HueBridge::with_username()
+    pub fn get_username(&self) -> &str {
+        self.token.as_ref().unwrap()
     }
 
     /// Retrieve the registered application name
-    pub fn get_app_name(&self) -> String {
+    pub fn get_app_name(&self) -> &str {
         // TODO: retrieve this from the user config!
-        self.app_name.clone()
+        self.app_name.as_ref().unwrap()
     }
 
-    pub(crate) async fn fetch_resource<T>(&self, method: Method, endpoint: &str) -> Result<T>
+    pub(crate) async fn do_request<T>(
+        &self,
+        method: Method,
+        endpoint: &str,
+        data: Option<String>,
+    ) -> Result<T>
     where
         T: DeserializeOwned,
     {
-        let url = format!("{}/{}", &self.api_url, endpoint).parse::<reqwest::Url>()?;
-        let mut req = Request::new(method, url);
-
-        req.headers_mut()
-            .append("hue-application-key", self.token.parse()?);
-
-        let resp = self.client.execute(req).await?;
-        let body = &resp.text().await?;
+        let url = Url::parse(format!("{}/{}", &self.api_url.as_ref().unwrap(), endpoint).as_str())?;
+        let client = self.client.as_ref().unwrap().to_owned();
+        let mut req = if let Some(data) = data {
+            client.request(method, url).body(data)
+        } else {
+            client.request(method, url)
+        };
+        let token = self.token.as_ref().unwrap().to_string();
+        req = req.header("hue-application-key", token.clone());
+        let resp = req.send().await?;
+        let body = resp.text().await?;
 
         Ok(serde_json::from_str(&body)?)
     }
@@ -160,13 +190,13 @@ impl HueBridge {
 
 impl Default for HueBridge {
     fn default() -> Self {
-        let client = Client::new();
-
         Self {
-            client,
-            api_url: "".to_string(),
-            token: "".to_string(),
-            app_name: "".to_string(),
+            client: None,
+            disable_tls: false,
+            api_url: None,
+            app_name: None,
+            token: None,
+            ca_path: None,
         }
     }
 }
